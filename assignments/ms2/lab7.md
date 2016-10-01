@@ -1,7 +1,7 @@
 ---
 layout: page
-title: "Lab 7: Testing Type Analysis"
-excerpt: "Lab 7: Testing Type Analysis"
+title: "Lab 7: Type Analysis"
+excerpt: "Lab 7: Type Analysis"
 tags: ["assignment"]
 context: assign
 subcontext: ms2
@@ -9,242 +9,346 @@ subcontext: ms2
 
 {% include _toc.html %}
 
-In this lab, you develop a test suite for type analysis.
-The test suite consists of type projection test cases, resolution test cases and constraint test cases.
+In this lab, you define typing rules and constraints for MiniJava.
+From this definition, you generate an Eclipse editor, that provides type information in hover help and type constraint checking.
 
 ## Overview
 
 ### Objectives
 
-Develop a test suite for type analysis.
-The test suite should provide
+Specify type analysis for MiniJava in NaBL, TS, and Stratego, and generate an Eclipse editor from it.
+The specification should include:
 
-1. Test cases for the types of expressions
-1. Test cases for the resolution of method names
-2. Test cases for
-  * errors on duplicate method definitions
-  * errors on missing method definitions
-  * errors on overloaded methods
-  * errors on cyclic inheritance
-  * errors on fields hiding fields in a parent class
-  * warnings on variables hiding fields in a parent class
-  * notes on overriding methods
-  * type errors in expressions (except for new array and array subscript expressions)
-  * type errors in statements
-  * type errors in method definitions
+1. Name binding rules for
+  * `this` expressions,
+  * method declarations and
+  * method calls.
+2. Typing rules for
+  * integer and boolean literals,
+  * unary and binary expressions,
+  * variable and field references,
+  * object creation,
+  * `this` expressions,
+  * and method calls.
+4. Custom constraint rules for type errors in
+  * expressions,
+  * statements and
+  * method declarations.
 
 ### Submission
 
-You need to submit your test project with a pull request against branch `assignment7` on GitHub.
+You need to submit your MiniJava project with a pull request against branch `assignment8` on GitHub.
 The [Git documentation](/documentation/git.html#submitting-an-assignment) explains how to file such a request.
 
-Test files created during this lab should go into the `MiniJava-tests-types` project.
-{: .notice .notice-warning}
-
-The deadline for submissions is November 15th, 23:59. Once you score 50 points or more in early feedback, this deadline is extended to November 29th, 23:59.
+The deadline for submission is November 22nd, 23:59.
 {: .notice .notice-warning}
 
 ### Grading
 
-You can earn up to 100 points for the coverage of your test cases. Therefor, we run your test cases against 48 correct and erroneous definitions of MiniJava. The total number of points depends on how many erroneous language you detect in each of the following groups:
+You can earn up to 75 points for the correctness of your type analysis.
+Therefore, we run several test cases against your implementation.
+You earn points, when your implementation passes test cases.
+The total number of points depends on how many test cases you pass in each of the following groups:
 
-- Names (30 points)
-  - Classes (2 points)
-  - Methods (25 points)
-  - Hiding (3 points)
-- Types (70 points)
-  - Expressions (44 points)
-  - Statements (26 points)
+* name binding (10 points)
+  * method declarations
+  * method calls
+* typing rules (30 points)
+  * literals (3 points)
+  * unary expressions (5 points)
+  * binary expressions (10 points)
+  * variable and field references (1 points)
+  * object creation (1 point)
+  * `this` expression (5 points)
+  * method call (5 points)
+* constraints (35 points)
+  * expressions (25 points)
+  * statements (10 points)
 
-It is important to name tests in a testsuite uniquely. Tests in different test suites can have the same name, but for grading, we need to be able to distinguish tests in the same test suite by their name.
-{: .notice .notice-warning}
+You can earn up to 20 points for your messages in errors and warnings.
+We particular focus on
+ readability,
+ precision,
+ and the level of detail in your messages.
+Finally, you can earn up to 5 points with a challenge.
 
 ### Early Feedback
 
-We provide early feedback for the effectiveness of your test cases.
-This feedback gives you an indication which parts of the name binding rules might still be uncovered by your tests.
-It includes a summary on how many erroneous language definitions you reveal and how many points you earn by detecting them.
+We provide early feedback for your language implementation.
+This feedback gives you an indication which parts of your name and type analysis might still be wrong.
+It includes a summary on how many tests you pass and how many points you earn by passing them.
 You have 5 early feedback attempts.
+
+If you scored 50 or more points during lab 7, you can also get more feedback for your tests until the deadline for assignment 9.
 
 ## Detailed Instructions
 
-### Preliminaries
-
-#### Git Repository
+### Git Repository
 
 You continue with your work from the previous assignment.
-See the [Git documentation](/documentation/git.html#continue-from-previous-assignment) on how to create the `assignment7` branch from your previous work.
+See the [Git documentation](/documentation/git.html#continue-from-previous-assignment) on how to create the `assignment8` branch from your previous work.
 
-#### Initial Test Project
+### TS
 
-Import the `MiniJava-tests-types` projects into Eclipse if you have not already done so:
+You have already used TS in a previous lab to specify constraints.
+In this lab, you specify typing rules for expressions and additional constraints in TS.
 
-1. right-click into the Package Explorer
-2. select **Import...** from the context menu
-3. choose **General/Existing Projects into Workspace** from the list
-4. select the project to import
-5. press the **Finish** button
+#### Debugging
 
-### Testing Types of Expressions
+Your test cases from the previous lab should enable a principled way of testing type analysis.
+In addition, hover functionality in the MiniJava editor also offers a quick way to check if type analysis works as expected. When you move your mouse over an expression or definition in a MiniJava editor, you should see its type in a hover text.
 
-In test cases for type analysis,
- you write syntactically correct programs and
- mark expressions with inner square bracket blocks.
-You can then specify the expected type of the marked expression in a `run x to y` clause.
-For example, the following two test cases require an integer literal to be of type `Int()`
-and a variable reference to be of its declared type `Bool()`:
+When you get unexpected results, you can inspect index entries and
+  collected tasks with the *Show analysis*, *Show tasks* and *Show index* builders.
+Probably the most useful builders for you are those which show them only for the current file (also called a partition) or for a selection.
+
+Consider the following task entry:
 
 ```
-module types
-
-language MiniJava
-start symbol Program
-
-test integer literal type [[
-  class Main {
-    public static void main (String[] args) {
-      System.out.println([[1]]);
-    }
-  }
-]] run get-type to Int()
-
-test variable reference type [[
-  class Main {
-    public static void main (String[] args) {
-      System.out.println(new Foo().run());
-    }
-  }
-
-  class Foo {
-    public int run() {
-      boolean x;
-      int y;
-
-      if ([[x]])
-        y = 1;
-      else
-        y = 0;
-
-      return y;
-    }
-  }
-]] run get-type to Bool()
+task 1 [2, 3] =
+  produce &2
+  ->
+  [Int()]
 ```
 
-You can use `setup` headers and footers to avoid repeating parts in similar test cases. See the [SPT documentation](http://metaborg.org/spt/#setup-blocks) for details.
+This entry consists of
 
-When applying `get-type` to objects, the expected `ClassType` constructor also requires annotations.
-These annotations should be added to the constructor using a wild card as done below.
+* an identifier `1`,
+* a list `[2, 3]` of dependencies on other tasks,
+* an instruction `produce &2` which refers the result of task `2`,
+* and a list of results `[Int()]`.
+
+You can navigate the dependencies of tasks to find the reasons for failing tasks.
+The following instructions exist:
+
+* `resolve ns n in s* wrt props []` resolves a name `n` of namespace `ns` in scopes `s*`.
+* `choose x <+ y` chooses from alternatives `x` and `y` deterministically.
+  If `x` is a term or a task with a result, `x` is chosen.
+  Otherwise, `y` is chosen.
+* `concat t1 + t2` combines the results of tasks `t1` and `t2`.
+* `Message(tsk, [], result, trm, msg)` shows an error message `msg` on term `trm` based on the `result` (either succeeding, failing, or producing multiple results) of task `tsk`.
+  There are similar variants for warnings and other conditions such as the success of a task.
+* `produce x` produces result `x`.
+* `CollectDefs(x)` retrieves the definition of a reference `x`.
+* `lookup Type() props on d` looks up the type of a definition `d`.
+* `check Type() prop t1 against t2 wrt Eq()` checks if types `t1` and `t2` are equal.
+* `rewrite t wrt s` rewrites term `t` using strategy `s`.
+
+### Typing Rules
+
+Typing rules specify the types of expressions.
+
+#### Literals
+
+In the simplest case, the type of an expression is directly known.
+A typical example for such expressions are literals.
+For example, integer literals are of type `int`:
 
 ```
-test expression id type [[
-  class Foobar {
-    Foo x;
-    public Foo method() {
-      return [[x]];
-    }
-  }
-]] run get-type to ClassType("Foo"{_})
+IntValue(_): Int()
 ```
 
-You should come up with test cases for the types of all kinds of expressions.
-Just like previous testing assignments, this assignment is all about the coverage of your test suite.
+Specify typing rules for the other literals.
 
-Array creation and array subscript expressions cannot be tested because of a bug in SPT.
+#### Unary and Binary Expressions
+
+Types for unary and binary expressions are also directly known.
+For example, the `not` expression is of type `boolean`:
+
+```
+UnExp(NotOp(), _): Boolean()
+```
+
+Note that these expressions have been desugared.
+See the `reference/desugar-signatures.str` file for their signatures, or run the `Syntax -> Show desugared syntax` builder on a MiniJava file to see the AST.
+
+Specify typing rules for all kinds of unary and binary expressions.
+
+#### References
+
+For references, you need to lookup the type of the corresponding definition.
+Types of definitions are specified in NaBL rules.
+You should have specified these types in the name analysis assignment:
+
+```
+...: defines Field f of type t
+```
+
+In TS, you can lookup the type of definitions.
+You already did this for the constraint rules in a previous lab, but this time the type will actually be used.
+Lookup the type of a definition as follows:
+
+```
+e: ty
+where definition of r: ty
+```
+
+Here, `r` should be a reference in the expression `e`.
+
+Specify typing rules for variable and field references, and object creation.
+
+Do not modify your existing constraint rules to achieve this. Instead, add additional type rules that assign types to references.
+TS supports overlapping rules, as long as typing rules of the form `e : ty` do not overlap with each other.
+Constraint rules of the form `e :-` can overlap with typing rules and other constraint rules.
+{: .notice .notice-info}
+
+### Name Binding Revisited
+
+#### `this` Expressions
+
+To type `this` expressions, you first need to specify a name binding rule for `this`.
+Since `this` is nowhere specified explicitly,
+  you need to add an implicit definition clause to one of your existing name binding rules in NaBL.
+An implicit definition has the following form:
+
+```
+...: implicitly defines Namespace name of type t
+```
+
+It adds an additional definition for `name` in namespace `Namespace` to a name binding rule that already defines some other name.
+
+Think about the scoping of `this` and what type it should have, then add an implicit definition for `this` to one of your existing name binding rules.
+You might want to reuse an existing namespace or define a new one for `this`.
+If you use a new namespace, you need to scope this namespace properly.
+As a name, use the constructor for `this`: `This()`.
+Implicit definitions can also have properties, which allows you to specify the type of `this`.
+
+Next, you should specify a name binding rule in NaBL which resolves a `this` expression to the implicit definition you just added.
+Again, you should use the constructor for `this` as the name in this rule.
+
+Finally, define a typing rule which looks up the type of `this`.
+You need to make sure that `definition of` is applied to the term matched by the rule, not to a new term `This()`.
+You can achieve this by binding a variable `v` to the term matching `this`:
+
+```
+v@This(): ...
+where definition of v ...
+```
+
+#### Method Calls
+
+Method calls need to be resolved with respect to the type of the callee expression.
+This expression needs to be of a class type and the method call should resolve to a method in the corresponding class.
+Such contextual references are specified in NaBL as follows:
+
+```
+...:
+  refers to Namespace1 name1 in Namespace2 name2
+  where e has type ty
+```
+
+The `where` clause requires an expression `e` to be of type `ty`.
+`name1` is then resolved in the scope of `name2`.
+
+You need to instantiate this pattern for method calls which resolve to methods inside classes.
+You should use a pattern for `ty`, which binds `name2`.
+Add a name binding rule for method calls in NaBL.
+
+To type a method call, you need to define the type of a method name definition:
+
+```
+...: defines Method m of type t
+```
+
+Modify your name binding rule for method declarations to include its type.
+Next, specify a type rule in TS for method calls, which looks up the type of the method declaration.
+
+### Constraints
+
+Now that all expressions have a type, it is time to specify typing constraints.
+All constraints are specified in TS.
+
+#### Unary and Binary Expressions
+
+Subexpression in unary and binary expressions need to be checked.
+In TS, equality of types can be checked against an expected type with `==`:
+
+```
+BinExp(Plus(), e1, _) :-
+where e1 : ty
+  and ty == expected-ty
+ else error "Useful message" on e1
+
+BinExp(Plus(), _, e2) :-
+where e2 : ty
+  and ty == expected-ty
+ else error "Another useful message" on e2
+```
+
+You can add names and types to your error messages in TS using the following syntax:
+
+```
+ else error $[Useful message with type [ty]] on e1
+```
+
+Do not add expressions to your messages, this can cause your analysis to fail.
 {: .notice .notice-warning}
 
-Make sure that there are no errors in tests with a `run x to y` clause. These tests are invalid when there are errors.
-{: .notice .notice-warning}
+Specify constraints for all kinds of unary and binary expressions.
+To prevent cascading errors when a constraint fails, you should add new constraint rules instead of extending your existing rules.
+Also separate the left and right-hand subexpression checks for binary expressions, like in the example above.
+This is to prevent error messages on the right-hand expression from showing when the constraint on the left-hand expression fails.
 
-Do not use start symbols other than `Program`.
-{: .notice .notice-warning}
+#### Statements
 
-### Testing Method Name Resolution
+Statements typically do not have a type, but they might expect a certain type of an expression in the statement.
+For example, an `if` statement requires a boolean expression.
 
-We did not test method names in assignment 5, since method name resolution requires type analysis.
-Types are available now, so we can test method name resolution.
-Consider the following test case as an example:
+Specify constraints for `if` statements, `while` statements, print statements, and assignments.
+Again, keep constraints separate to prevent cascading.
 
-```
-test method name resolution [[
-  class Main {
-    public static void main (String[] args) {
-      System.out.println(new Foo().[[run]]());
-    }
-  }
+#### Method Declarations
 
-  class Foo {
-    public int [[run]]() {
-      return 1;
-    }
-  }
-]] resolve #1 to #2
-```
+Specify a constraint which checks the type of a return expression against the declared return type of the method declaration.
 
-The type of the callee expression determines the class in which the method declaration can be found.
-In this example, the expression `new Foo()` is of type `ClassType("Foo"{_})` and
-the corresponding class `Foo` contains a method declaration for `run()`.
+#### Method Calls
 
-You should come up with test cases for the resolution of method names.
-Start with simple test cases, but keep in mind that method name resolution is quite complex
- and that coverage is the main criterion for your grade.
-It is important to think about forward and backward references,
- resolution in the presence of homonyms and overriding,
- and the influence of class hierarchies on resolution.
+Finally, you need to check the arguments of method calls, which can have missing arguments, too many arguments, or wrong argument types.
 
-You should also come up with test cases for error checking on method names.
-This should include test cases for errors on duplicate definitions, missing definitions, and method overloading
- as well as for notes on method overriding.
-Similar to previous test cases, you can pair up positive (`0 errors`) and negative test cases.
+To check this, you need to modify your name binding rule for method declarations again, this time to associate each method declaration with a more sophisticated type.
+This type should include the expected types for the parameters and the return type of the method.
+You can construct such a type as a tuple `(pty*, ty)` of parameter types `pty*` and return type `ty`.
 
-Make sure that there are no errors in tests with a `resolve x to y` clause. These tests are invalid when there are errors.
-{: .notice .notice-warning}
-
-### Testing notes
-
-Notes are notices that display some information.
-Testing notes is similar to testing errors, add a `x notes` clause to a test to expect notes in the test fragment.
-
-Make sure that there are no errors in tests with a `x notes` clause. These tests are invalid when there are errors.
-{: .notice .notice-warning}
-
-### Testing Type Error Checking
-
-A type error occurs, when the type of an expression does not conform to its expected type.
-Consider the following test case as an example:
+Similar to the rule for method calls, you can collect the parameter types with a `where x has type tys` clause.
+When this clause is used on a list `x`, it will automatically retrieve the types of elements in `x`, and produce a list of types `tys`.
+To make this work, you also need to create a type rule for parameters in TS:
 
 ```
-test print boolean [[
-  class Main {
-    public static void main (String[] args) {
-      System.out.println(true);
-    }
-  }
-]] 1 error
+Param(t, _): ...
 ```
 
-In MiniJava, `System.out.println()` can only print integers.
-Thus, there should be an error on `true`, when we pass it to the print statement.
-Similarly, type errors can occur in other statements, expressions, and method declarations.
-You should come up with test cases for such errors.
-Subtyping is a common source for errors not only in programs, but also in language implementations.
-It is therefore important to have positive and negative typing tests, which involve correct and incorrect subtyping.
+Before you continue, you should check if the type associated with the method name carries all the information you need.
+Hover over a method name, the tooltip should include the type which should look like: `([p1ty, p2ty, ..., pnty], rty)`.
+Do not continue, until this is working.
+{: .notice .notice-warning}
 
-Again, keep in mind that coverage is the main criterion for your grade.
+Since the type of method definitions has changed, you should modify your type rule for method calls to extract the return type from the tuple `(pty*, ty)`.
 
-### Number of errors
+Next, add a constraint in TS which checks the argument types.
+The type lookup will now yield the more sophisticated type.
+You need to extract the parameter types and the return type from the tuple.
+You can use a pattern for `sophisticated-type` which matches a tuple with `parameter-types` and `return-type`:
 
-Similar to the previous testing lab, it is important to specify the exact number of errors in `x errors` tests for grading to work correctly.
-You need to make sure that your program does not contain any other errors.
+```
+... :-
+where definition of m: sophisticated-type // lookup sophisticated type and match parameter-types and return-type
+  and ...                                 // get the actual argument types from the method
+  and ...                                 // check actual argument types w.r.t. parameter types
+ else ...                                 // show error if types are not equal
+```
 
-For duplicate method definitions, you get an error for every definition of the same name.
-For missing method definitions, you get an error for every unresolved reference.
-For overloaded method definitions, you get an error for every overloaded definition in the same class.
-And for cyclic inheritance, you get an error for every class definition in the cycle.
+The type equivalence operator `==` in TS also works on lists of types.
+It also checks if both lists are of the same size, and fails if they are not.
 
-Interaction between names and types give rise to more complex cases.
-Unresolved references cause an error, but also cascade into the surrounding expression or statement, because the reference is untyped, resulting in 2 errors in total.
-In addition, unresolved method references create an additional error because the arguments cannot be checked, resulting in 3 errors in total.
-For assignments, when the left hand side is unresolved, there is an unresolved error and an additional error because the right hand side cannot be checked, resulting in 2 errors in total.
+Think about where the error message should appear if the parameter and argument types do not match.
+Even when there are no arguments (the argument list is empty), the error should appear somewhere.
 
-Literal, unary, and binary expressions do not cascade errors, because their type is always known.
+### Challenge
+
+Challenges are meant to distinguish excellent solutions from good solutions.
+Typically, they are less guided and require more investigation or higher programming skills.
+{: .notice .notice-success}
+
+Currently, the rules for unary and binary expressions do not benefit from desugaring. This can be improved, by adding typing rules for unary and binary operators. Similar to the types of method names, the type of an operator should encode the type of its arguments and its result.
+
+Provide typing rules for all unary and binary operators. Next, provide a single typing rule for unary expressions, which inspects the type of its unary operator. In a similar fashion, provide a single constraint rule for unary expressions. Finally, provide a single typing rule for binary expressions, which inspects the type of its binary operator. Provide two constraint rules for checking type errors in the left and right subexpression of a binary expression.

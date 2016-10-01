@@ -1,7 +1,7 @@
 ---
 layout: page
-title: "Lab 10: Simple Code Generation"
-excerpt: "Lab 10: Simple Code Generation"
+title: "Lab 10: More Code Generation"
+excerpt: "Lab 10: More Code Generation"
 tags: ["assignment"]
 context: assign
 subcontext: ms3
@@ -9,43 +9,60 @@ subcontext: ms3
 
 {% include _toc.html %}
 
-In this lab, you develop a simple code generator, that generates Java bytecode from simple MiniJava programs, which only print integer constants in their main methods.
+In this lab, you extend your code generator to handle expressions, statements, methods without local parameters, and classes without fields.
 
 ## Overview
 
 ### Objectives
 
-1. Write a Jasmin program which prints `42`.
-2. Implement a code generator that transforms MiniJava programs into Java bytecode.
-The code generator should include
-    1. A transformation from MiniJava ASTs to Jasmin ASTs which handles MiniJava programs
-        * with only a main class
-        * with a single print statement
-        * with an integer constant expression.
-    2. A menu action which invokes the transformation and pretty-prints the Jasmin AST to concrete syntax.
-    3. A menu action which generates a Java class file instead of a Jasmin file.
-    4. A menu action which runs the program (challenge).
+1. Write MiniJava programs and corresponding Jasmin programs which cover the following constructs:
+    * all kinds of unary and binary expressions,
+    * object and array creation,
+    * `this` expressions,
+    * method calls without arguments,
+    * block statements,
+    * `if` statements,
+    * `while` statements,
+    * methods without parameters and local variables,
+    * classes without fields.
+2. Extend your code generator to handle these constructs.
 
 ### Submission
 
-You need to submit your MiniJava project with a pull request against branch `assignment10` on GitHub.
+You need to submit your MiniJava project with a pull request against branch `assignment11` on GitHub.
 The [Git documentation](/documentation/git.html#submitting-an-assignment) explains how to file such a request.
 
-The deadline for submission is December 6th, 23:59.
+The deadline for submissions is December 13th, 23:59.
 {: .notice .notice-warning}
 
 ### Grading
 
-You can earn up to 20 points for your Jasmin program and up to 70 points for your code generator:
+You can earn up to 20 points for your example MiniJava programs and their corresponding Jasmin programs.
+We will focus on completeness and correctness of your examples.
+Furthermore, you can earn up to 70 points for your code generator:
 
-* transformation (50 points)
-    * program (2 points)
-    * main class (18 points)
-    * main method (13 points)
-    * print statement (17 points)
-* challenge (20 points)
+* transformation (55 points)
+    * classes (8 points)
+    * methods (7 points)
+    * statements (13 points)
+        * block statements (2 points)
+        * `if` statements (5 points)
+        * `while` loops (6 points)
+    * expressions (27 points)
+        * logic constants (1 point)
+        * unary expressions (5 points)
+        * binary expressions  (14 points)
+        * object and array creation (1 point)
+        * `this` expressions (1 point)
+        * method calls (5 points)
+* challenges (15 points)
+    * overlays (2 points)
+    * reusable method descriptors (3 points)
+    * stack limits (10 points)
 
-You can earn up to 10 points for the quality of your code. We focus on readability in general, meaningful variable names and the consistent use of Stratego paradigms. We pay special attention on the treatment of lists in your code. We will consider the fact that Stratego is new to you.
+You can earn up to 10 points for the quality of your code.
+We focus on readability in general, meaningful variable names and the consistent use of Stratego paradigms.
+We will consider the fact that Stratego is new to you.
 
 ### Early Feedback
 
@@ -53,161 +70,224 @@ This assignment is graded manually. Thus, we do not provide early feedback for t
 
 ## Detailed Instructions
 
-### Preliminaries
+### Git Repository
 
-#### GitHub Repository
+You continue with your work from the previous assignment.
+See the [Git documentation](/documentation/git.html#continue-from-previous-assignment) on how to create the `assignment11` branch from your previous work.
 
-We provide you with a template for this assignment in the `assignment10` branch.
-See the [Git documentation](/documentation/git.html#template) on how to check out this branch.
+### Write More Jasmin Code
 
-#### Initial Editor Project
+Before you extend your code generator, you should come up with small example MiniJava programs, which cover the following constructs:
 
-The template provides you with a fresh MiniJava editor project, which covers the syntax and analysis of MiniJava.
-For grading purposes, you are required to use this project as a starting point for milestone 3.
-You should import and build the new project, following these steps:
+* all kinds of unary and binary expressions,
+* object creation,
+* `this` expressions,
+* method calls without arguments,
+* block statements,
+* `if` statements,
+* `while` statements,
+* methods without parameters and local variables,
+* classes without fields.
 
-1. Import the projects into your workspace:
-    1. right-click into the Package Explorer
-    2. select **Import...** from the context menu
-    3. choose **Maven/Existing Maven Projects** from the list
-    4. select the MiniJava and Jasmin-examples project
-    5. press the **Finish** button
-2. Build the project:
-    1. select the project folder
-    2. select **Build Project** from the **Project** menu
-    3. the console will report success or failure
+Write corresponding Jasmin programs, which you expect to be the result of a MiniJava-to-Jasmin compiler.
+Generate Java class files from them and run them.
+Improve your programs until they run without errors.
 
-The MiniJava project contains the following implementations:
+Do not write all the MiniJava programs and the corresponding Jasmin code in one go.
+Instead, you should extend your code generator once you figured out the Jasmin code for a certain construct.
+This way, you can go back and forth between manually writing Jasmin code and extending the code generator.
 
-* MiniJava signatures in `reference/src-gen/signatures/minijava-sig`.
-* MiniJava pretty-printer in `reference/src-gen/pp/minijava-pp`
-* MiniJava syntactic completions in `reference/src-gen/completions/minijava-esv`.
-* MiniJava desugaring signatures in `reference/desugar-signatures`.
-<!-- TODO: These are no longer in the initial project, since Jasmin is in Eclipse. But students need the signatures, right? -->
-* JasminXT signatures in `reference/src-gen/jasmin-signatures/JasminXT*-sig`
+### Generate Code for Expressions and Statements
 
-These implementations are already imported into the initial project.
+You now need to extend `stmt-to-jbc` and `exp-to-jbc` to cover all statements except assignments.
 
-The Jasmin-examples project contains several Jasmin examples. You can try to run them using the builders from the JVM menu.
+1. Provide a rule for `stmt-to-jbc`, which translates a block statement from MiniJava into a sequence of Java bytecode instructions.
+   This rule should call `stmt-to-jbc` recursively to translate the inner statements to Java bytecode sequences.
 
-### Write Jasmin Code
+2. Provide rules for `exp-to-jbc`, which translate logic constants `true` and `false` from MiniJava into sequences of Java bytecode instructions.
 
-Consider the following simple MiniJava program:
+3. Provide rules for `stmt-to-jbc`, which translate `if` and `while` statements from MiniJava into sequences of Java bytecode instructions.
+   These rules should call `stmt-to-jbc` recursively to translate inner statements to Java bytecode sequences.
+   The JVM documentation discusses an efficient translation pattern for `while` loops.
 
-```
-class Simple {
-    public static void main(String[] args) {
-        System.out.println(42);
-    }
-}
-```
+   These statements require labels.
+   You can apply `newname` from Stratego's standard library to a string, to obtain a fresh name starting with the given string.
 
-Write a Jasmin program `simple.j`, which you expect to be the result of a MiniJava-to-Jasmin compiler.
-Generate a Java class file from it and run it.
-Improve your program until it runs without errors.
+4. Provide rules for `exp-to-jbc`, which translate unary and binary expressions from MiniJava into sequences of Java bytecode instructions.
+   These rules should call `exp-to-jbc` recursively to translate subexpressions to Java bytecode sequences.
+   Furthermore, they should call a strategy `op-to-jbc` to translate unary and binary operators to Java bytecode instructions.
+   The only exception is the `&&` operator, which needs to be treated differently, due to its lazy evaluation semantics.
 
-### Implement a Code Generation Strategy
+You can test each rule by selecting a code fragment in the MiniJava editor and running your code generation builder.
 
-Code generation should be a service of your MiniJava editor.
-The initial project contains several builders in the *Generate* menu.
-The *Generate Java bytecode* builder calls the `generate-jbc` strategy which is defined in `trans/codegen/build.str`.
-The implementation relies on a strategy `program-to-jbc`, which transforms MiniJava programs into Java bytecode.
-We provide an implementation of `program-to-jbc` that always fails in `trans/codegen/classes.str`.
+### Code Generation for Methods
 
-You need to implement `program-to-jbc`.
-You will do this stepwise over the remaining labs.
-During this lab, you should implement it for programs that contain only a main class, which prints a single integer constant.
-To understand Jasmin's abstract syntax, you can either
-  study example ASTs generated by a Jasmin editor,
-  study the grammar in the Jasmin project,
-  or have a closer look into `reference/src-gen/jasmin-signatures/-`.
+Now you need to define a strategy `method-to-jbc` to handle methods without local variables.
 
-1. Provide a rule for `exp-to-jbc`, which translates an integer constant from MiniJava into a sequence of Java bytecode instructions, that loads this constant to the operand stack.
-   Note that it is important to generate a sequence here, even if you only need a single instruction, because in general a MiniJava expression translates into a sequence of bytecode instructions.
+1. Provide a rule for `method-to-jbc`, which translates a method without parameters and local variables from MiniJava into a Jasmin method. This rule should call `stmt-to-jbc` to translate the statements of the method to a Java bytecode sequence.
 
-2. Provide a rule for `stmt-to-jbc`, which translates a print statement from MiniJava into a sequence of Java bytecode instructions.
-This rule should call `exp-to-jbc` to translate the expression inside the print statement to a Java bytecode sequence.
+2. Provide a rule for `exp-to-jbc`, which translates `this` expressions from MiniJava into sequences of Java bytecode instructions.
 
-3. Provide a rule for `class-to-jbc`, which translates a main class from MiniJava into a Jasmin class file.
-This rule should call `stmt-to-jbc` to translate the statement inside the main method to a Java bytecode sequence.
+3. Provide a rule for `exp-to-jbc`, which translates method calls without arguments from MiniJava into sequences of Java bytecode instructions.
+   This rule should call `exp-to-jbc` recursively to translate subexpressions to Java bytecode sequences.
+   For this rule, you need to know the name of the class containing the method and the type of the method.
+   You can extract the class name from the URI of the method name.
+   The following strategies might be useful:
+    * `nabl-uri` extracts the URI from an annotated name.
+    * `nabl-uri-parent` rewrites an URI to the URI of the enclosing scope.
+    * `nabl-uri-name` rewrites an URI to the name of the definition it identifies.
 
-4. Provide a rule for `program-to-jbc`, which translates a MiniJava program into a list of Jasmin class files.
-This rule should call `class-to-jbc` to translate the main class of the program into a Jasmin class file.
+   You can query the type associated with the method name with `get-type`.
+   This requires access to the index and the task engine, which needs to be setup.
+   You should do this in your builder strategies by adding the following strategy calls:
 
-#### Testing
+        index-setup(|<language>, project-path); task-setup(|project-path)
 
-For testing purposes, you can define another menu entry which calls a strategy `to-jbc`, which dispatches to your different implementation rules:
+4. Extend the rule for `class-to-jbc`, which handles empty classes, in order to include code generation for methods.
 
-    to-jbc = program-to-jbc + class-to-jbc + stmt-to-jbc + exp-to-jbc
+5. Provide a rule for `exp-to-jbc`, which translates object creation expressions into sequences of Java bytecode instructions.
 
-This allows you to test your implementation by selecting a code fragment in the MiniJava editor and running your code generation builder.
-
-#### Some Notes on Sequences
-
-You can represent sequences as lists.
-Sequences of bytecode instructions are never nested.
-Thus, your generated sequences should also be flat lists.
-This requires you to compose sequences from recursive calls with surrounding instructions.
-In general, there are four different approaches to this in Stratego:
-
-1. Generate nested lists and flatten these lists afterwards by applying `flatten-list` (not recommended).
-
-2. Compose lists with a head and tails notation. For example, `seq` might be a sequence generated by a recursive call. You can precede this sequence with instructions `instr1`, ..., `instrn` by writing `[ instr1, ..., instrn | seq ]`.
-
-3. Compose lists explicitly.
-    * `<conc> (l1, l2)` concatenates two lists `l1`and `l2`.
-    * `<concat> [l1, ..., ln]` concatenates lists `l1` ... `ln`.  
-
-4. Use special list variables (recommended). Stratego provides special variable names for sequences. These names end in `*`, for example `instr*`. When using such variables in a list, Stratego will inline the list elements at that position instead of creating a nested list. For example,
-
-        instr1* := [LDC(Int("1")), LDC(Int("2"))]; instr2* := [LDC(Int("0")), instr1*, LDC(Int("3"))]
-
-    is equivalent to
-
-        instr1* := [LDC(Int("1")), LDC(Int("2"))]; instr2* := [LDC(Int("0")), LDC(Int("1")), LDC(Int("2")), LDC(Int("3"))]
-
-#### Generate Concrete Syntax
-
-As you may have noticed, your implementation follows the code generation by transformation paradigm. The result of `to-jbc` is a Jasmin AST. The builder strategy `generate-jbc` generates concrete Jasmin syntax by calling `jasmin-pp` which is defined in `trans/jasmin.str`. Take a look at the code in `trans/codegen/build.str` to see what is going on.
-
-### Generate Java Class Files
-
-At this point, you can generate Jasmin class files from simple MiniJava programs. To run your programs in the Java Virtual Machine, you need to generate Java class files.
-The builder *Generate Java class files* calls the builder strategy `generate-jc` that generates the Jasmin file and turns it into a Java class file.
-
-To translate a Jasmin AST into a Java class file we use the strategy `jasmin-generate` defined in `trans/jasmin.str`. As you can see, this strategy requires the path to the source file in a Jasmin directive. The source directive is used by the JVM for debugging purposes and error messages. The Jasmin builder uses it to figure out where to store the class file. Thus, make sure your Jasmin AST has the form `JBCFile(JBCHeader(_, JBCSource(<double-quote> path), _, _, _, _, _, _, _, _), _, _)`. The `path` term is passed to `program-to-jbc` as a strategy argument for you to use.
-
-### Notes on names in Jasmin
-
-Even though in MiniJava some keywords are reserved, Jasmin has its own keywords. Some Jasmin implementations consider those as reserved, some do not. Typical examples are keywords such as `field` or `class`. In the Spoofax implementation, we do not reserve these, but other Jasmin implementations might do, particularly if they may not have the latest updates (Debian for example). See [StackOverflow](http://stackoverflow.com/questions/10371352/how-to-handle-field-named-as-keywords-in-jasmin) for more information about this.
-
-### Debugging stratego code
-
-Stratego is hard to debug, so here are some tips. Using `debug` is not part of the assignment, but it will make your life easier.
-
-#### The `debug` strategy
-
-The `debug` strategy prints the current term. There is also an overloaded version `debug(msg)`. This will print the term produced by applying `msg` followed by the current term. Note that this allows you to add some text while leaving the current term intact. For example, compare the following version of `generate-jbc` to the one provided in the initial project:
-
-    generate-jbc:
-        (selected, position, ast, path, project-path) -> None()
-        with
-          <debug(!"Path: ")> path
-        ; dir := <remove-extension> path
-        ; <debug(!"Dir: ")> dir
-        ; <try(mkdir)> dir
-        ; index-setup(|<language>, project-path)
-        ; task-setup(|project-path)
-        ; <program-to-jbc(|path); debug(!"program-to-jbc: "); map(write-jbc(|dir))> ast
-
-The runtime library `lib/runtime/nabl/utils.str` contains several shorthand functions. The strategy `ppdebug0` produces more readable output by prettyprinting the current term before calling `debug(!"0")`. Moreover, the strategy `ppdebugna0` calls `ppdebug0` but strips the annotations first.
-
-## Challenge
+## Challenges
 
 Challenges are meant to distinguish excellent solutions from good solutions.
-Typically, they are less guided and require more investigation or higher programming skills.
+Typically, they are less guided and require more investigation and programming skills.
 {: .notice .notice-success}
 
-The JVM provides different Java bytecode instructions to load integer constants, which differ in memory consumption both in the constant pool and in the actual bytecode. As explained in the lecture, generated code can be optimised after code generation. This keeps code generation and optimisation separated, and allows reuse of optimisations in different compiler backends.
+### Overlays
 
-Implement an optimisation strategy `optimize-jbc`, which optimises a sequence of Java bytecode instructions by replacing instructions to load integer constants with more efficient variants. Integrate this strategy into your code generation by applying it in `class-to-jbc` to the sequence of generated Java bytecode instructions.
+Code generation rules become hard to read, when you construct large ASTs.
+Often, these rules inject only small parts into a skeleton AST.
+For example, the only variable parts in the default constructor of a class are its name `c` and the name of its super class `p`:
+
+    JBCMethod(
+      [PUBLIC()]
+    , Init()
+    , JBCMethodDesc([], Void())
+    , [ JBCLimitStack("1"), JBCLimitLocals("1")
+      , JBCVarDecl("0", "this", Reference(CRef(c)), LabelRef("start"), LabelRef("end"))
+      , JBCLabel("start")
+      , ALOAD_0()
+      , INVOKESPECIAL(JBCMethodRef(CRef(p), MRef(Init()), JBCMethodDesc([], Void())))
+      , RETURN()
+      , JBCLabel("end")
+      ]
+    )
+
+Furthermore, you might use the same pattern in different rules, e.g. in code generation rules for the main class and for ordinary classes.
+One way to avoid code duplication, are helper strategies.
+For example, you can have a strategy `to-jbc-constructor` which rewrites a pair of class and super class names to the default constructor.
+Alternatively, you can use _overlays_, which allow the specification of pattern abstractions.
+
+Overlays are specified in their own section.
+They are named, can be parametrised, and can be nested:
+
+    overlays
+
+      DEFAULT-CONSTRUCTOR(c, p) =
+        JBCMethod(
+          [PUBLIC()]
+        , Init()
+        , JBCMethodDesc([], Void())
+        , [ JBCLimitStack("1"), JBCLimitLocals("1")
+          , THIS-DECLARATION(c)
+          , JBCLabel("start")
+          , ALOAD_0()
+          , INVOKE-CONSTRUCTOR(p)
+          , RETURN()
+          , JBCLabel("end")
+          ]
+        )
+
+You can use overlays like terms in your rules, both for matching and building:
+
+    rules
+
+      class-to-jbc:
+       Class(c, e, fs, ms) -> JBCFile(header, jbc-fs, [ DEFAULT-CONSTRUCTOR(c, p) | jbc-ms ])
+       where ...
+
+Identify AST patterns in your code generation rules and come up with overlays to improve the readability of these rules.
+
+### Reusable Method Descriptors
+
+In Java bytecode, method declarations and method calls include a method descriptor.
+You can construct such an descriptor from the type associated with a method name.
+In the current setup, you do this construction once for a method declaration and once for each method call.
+However, the descriptor for a call is the same as for the declaration the call refers to.
+You can avoid the reconstruction by storing a custom property on the method name.
+There are two variants to achieve this.
+In the first variant, you store method descriptors (`MethodDescriptor`).
+In the second variant, you store method references (`MethodRef`).
+
+#### Variant 1: Storing Method Descriptors
+
+First, you need to declare a property `descriptor` for namespace `Method` in a NaBL file:
+
+    properties
+
+      descriptor of Method: MethodDescriptor
+
+Next, you need to store the property at a method declaration by defining a Stratego rewrite rule for `nabl-prop-site`:
+
+    nabl-prop-site(|lang, ctx, uris, states, implicits):
+      Method(ty, mname, param*, var*, stmt*, exp) -> <fail>
+      where
+        descr := ... // create descriptor
+      ; <store-descriptor(|ctx, descr)> mname
+
+Finally, you can access the descriptor in your code generation rules with `get-descriptor`:
+
+    method-to-jbc:
+      Method(ty, mname, param*, var*, stmt*, exp) -> ...
+      where
+        descr := <get-descriptor> mname
+      ; ...
+
+    exp-to-jbc:
+      Call(e, mname, e*) -> ...
+      where
+        descr := <get-descriptor> mname
+      ; ...
+
+#### Variant 2: Storing Method References
+
+In an alternative approach, you can store complete method references instead of just method descriptors.
+The property declaration in NaBL and the rewrite rule to store the property are similar to the first variant.
+But this variant will require you to extract descriptors from method references at definition sites:
+
+    method-to-jbc:
+      Method(ty, mname, param*, var*, stmt*, exp) -> ...
+      where
+        ref   := <get-reference> mname
+      ; descr := ... // extract descriptor from ref
+      ; ...
+
+As a benefit, the rule for method calls becomes simpler:
+
+    exp-to-jbc:
+      Call(e, mname, e*) -> ...
+      where
+        ref := <get-reference> mname
+      ; ...
+
+### Precise Stack Limit Directives
+
+A stack limit directive tells the Java Virtual Machine the maximum number of elements at the operand stack.
+To give a precise limit, you need to write a strategy `stack-limit` that maps MiniJava expressions and statements to a stack limit.
+
+Do not do this analysis on the Java bytecode level.
+{: .notice .notice-danger}
+
+For expressions, you need to consider the number of elements already on the stack before the expression is evaluated. You can either pass this number as a term parameter or adapt intermediate results accordingly.
+For statements, you do not need this information since statements should not leave any elements on the stack.
+
+The following strategies might be useful:
+
+* `inc`  rewrites an integer number to its successor.
+* `max` rewrites a pair of integer numbers to the maximum of both numbers.
+* `addi` rewrites a pair of integer numbers to the sum of both numbers.
+* `foldr(s1, s2, f)` right-folds a list.
+  `s1` yields the starting point of the folding, `s2` is the folding strategy, and `f` is applied to each element just before each folding step.
+
+For grading it is important that your strategy `stack-limit` does not take any parameters. You are free to use parameters in strategies that you call yourself.
+{: .notice .notice-info}
