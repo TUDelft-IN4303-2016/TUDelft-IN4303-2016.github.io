@@ -18,15 +18,15 @@ We split this task into three milestones of (roughly) weekly individual assignme
   * [Syntax Definition](ms1/lab2.html)
   * [Simple Term Rewriting](ms1/lab3.html)
 * [Milestone 2: Semantic Analysis](ms2)
-  * [Testing Name Analysis](ms2/lab5.html)
-  * [Name Analysis](ms2/lab6.html)
-  * [Testing Type Analysis](ms2/lab7.html)
-  * [Basic Type Analysis](ms2/lab8.html)
-  * [Inheritance and Subtyping](ms2/lab9.html)
+  * [Testing Name Analysis](ms2/lab4.html)
+  * [Name Analysis](ms2/lab5.html)
+  * [Testing Type Analysis](ms2/lab6.html)
+  * [Basic Type Analysis](ms2/lab7.html)
+  * [Inheritance and Subtyping](ms2/lab8.html)
 * [Milestone 3: Code Generation](ms3)
-  * [Compiling Minimal Programs](ms3/lab10.html)
-  * [Compiling Expressions and Statements](ms3/lab11.html)
-  * [Compiling, Fields, Parameters, and Variables](ms3/lab12.html)
+  * [Compiling Minimal Programs](ms3/lab9.html)
+  * [Compiling Expressions and Statements](ms3/lab10.html)
+  * [Compiling, Fields, Parameters, and Variables](ms3/lab11.html)
 
 ## Submission
 
@@ -46,7 +46,7 @@ We do our best to hand out grading reports as quick as possible, but manual grad
 
 Early feedback and most parts of final grading are automated and supported by an AWS in Education Grant award.
 Each pull request triggers the launch of an Amazon EC2 instance which runs automated feedback and grading for your solution.
-Be aware that feedback might be delayed due to submissions by other students, instance limits, server problems, etc. 
+Be aware that feedback might be delayed due to submissions by other students, instance limits, server problems, etc.
 
 ## Grades
 
@@ -65,18 +65,19 @@ These rules allow you to compensate for lower grades in single assignments, but 
 In Q1 the lab is on Friday, and deadlines are on Wednesdays at 23:59. Each assignment has a 24 hour deadline extension with a penalty of 2 points.
 
 * Milestone 1: Syntax Analysis
-   - 21/09: Lab 1: Testing Syntax Analysis 
+   - 21/09: Lab 1: Testing Syntax Analysis
    - 28/09: Lab 2: Syntax Definition
    - 05/10: Lab 3: Simple Term Rewriting
 * Milestone 2: Semantic Analysis
-   - 19/10: Lab 4: Testing Name Analysis 
+   - 19/10: Lab 4: Testing Name Analysis
    - 26/10: Lab 5: Name Analysis
 
 In Q2 the lab is on Thursday and the deadlines are on Monday at 17:00. Each assignment has a 24 hour deadline extension with a penalty of 2 points.
 
 * Milestone 2: Semantic Analysis (continued)
    - 21/11: Lab 6: Testing Type Analysis
-   - 28/11: Lab 7: Type Analysis 
+   - 28/11: Lab 7: Type Analysis
+   - ??/??: Lab 8: Inheritance and Subtyping
 * Milestone 3: Code Generation
    - 5/12: Lab 8: Compiling Minimal Programs
    - 19/12: Lab 9: Compiling Expressions and Statements
